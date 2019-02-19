@@ -9,6 +9,9 @@ const {
   poweredByHandler
 } = require('./handlers.js')
 
+const Game = require('./state.js')
+const helpers = require('./helpers.js')
+
 // For deployment to Heroku, the port needs to be set using ENV, so
 // we check for the port number in process.env
 app.set('port', (process.env.PORT || 9001))
@@ -21,13 +24,17 @@ app.use(poweredByHandler)
 
 // --- SNAKE LOGIC GOES BELOW THIS LINE ---
 
+const game = new Game()
+
 // Handle POST request to '/start'
 app.post('/start', (request, response) => {
-  // NOTE: Do something here to start the game
+  game.setId(request.body.game.id)
+  game.setState(request.body.turn, request.body.board, request.body.you)
 
-  // Response data
   const data = {
-    color: '#DFFF00',
+    color: '#06d66e',
+    headType: 'pixel',
+    tailType: 'regular'
   }
 
   return response.json(data)
@@ -35,11 +42,26 @@ app.post('/start', (request, response) => {
 
 // Handle POST request to '/move'
 app.post('/move', (request, response) => {
-  // NOTE: Do something here to generate your move
+  game.setState(request.body.turn, request.body.board, request.body.you)
 
-  // Response data
-  const data = {
-    move: 'up', // one of: ['up','down','left','right']
+  const data = {}
+  let foundValidMove = false
+
+  for (const move of helpers.shuffle(['up', 'down', 'left', 'right'])) {
+    try {
+      if (game.isValidMove(move)) {
+        data.move = move
+        foundValidMove = true
+        break
+      }
+    } catch (err) {
+      console.log(err)
+    }
+  }
+
+  if (!foundValidMove) {
+    console.log('NO VALID MOVES FOUND')
+    data.move = 'up'
   }
 
   return response.json(data)
